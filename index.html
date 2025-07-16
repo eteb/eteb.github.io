@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roblox Profile Lookup</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0a0a0a;
+            background-image: radial-gradient(circle at top right, rgba(14, 165, 233, 0.15), transparent 40%),
+                              radial-gradient(circle at bottom left, rgba(56, 189, 248, 0.15), transparent 40%);
+        }
+        .font-orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+        .glass-card {
+            background-color: rgba(17, 24, 39, 0.75);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .btn-glow {
+            box-shadow: 0 0 5px rgba(56, 189, 248, 0.8), 0 0 10px rgba(56, 189, 248, 0.6), 0 0 15px rgba(56, 189, 248, 0.4);
+        }
+        .btn-glow:hover {
+            box-shadow: 0 0 8px rgba(56, 189, 248, 1), 0 0 16px rgba(56, 189, 248, 0.8), 0 0 24px rgba(56, 189, 248, 0.6);
+        }
+        .spinner {
+            border-top-color: #0ea5e9;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="text-gray-200 min-h-screen flex items-center justify-center p-4">
+
+    <div class="w-full max-w-md mx-auto">
+        <header class="text-center mb-8">
+            <h1 class="font-orbitron text-4xl font-bold text-sky-400 tracking-wider">
+                RBLX<span class="text-white">_</span>LOOKUP
+            </h1>
+            <p class="text-gray-400 mt-2">Enter a User ID or Profile URL to begin.</p>
+        </header>
+
+        <form id="lookupForm" autocomplete="off" class="flex gap-3 mb-6">
+            <input type="text" id="userInput" placeholder="User ID or Profile URL" required class="flex-grow bg-gray-800 border-2 border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all duration-300">
+            <button type="submit" class="bg-sky-500 text-white font-bold rounded-lg px-6 py-3 transition-all duration-300 btn-glow">
+                Search
+            </button>
+        </form>
+
+        <div id="spinner" class="hidden spinner w-10 h-10 border-4 border-gray-700 rounded-full mx-auto"></div>
+        
+        <div id="errorMessage" class="hidden glass-card rounded-lg p-4 text-center text-red-400 border border-red-500/50 fade-in"></div>
+
+        <div id="resultsCard" class="hidden glass-card rounded-xl p-6 fade-in">
+            <div class="flex flex-col sm:flex-row items-center gap-6 mb-6">
+                <div class="relative">
+                    <img id="avatarImg" src="" alt="Avatar" class="w-28 h-28 rounded-full object-cover bg-gray-800 ring-4 ring-sky-500/50">
+                </div>
+                <div class="text-center sm:text-left">
+                    <h2 id="displayName" class="text-3xl font-bold text-white"></h2>
+                    <p id="username" class="text-sky-400 text-lg"></p>
+                </div>
+            </div>
+
+            <p id="description" class="text-gray-300 text-center sm:text-left bg-gray-900/50 p-4 rounded-lg mb-6"></p>
+
+            <div class="grid grid-cols-3 gap-4 text-center mb-8">
+                <div id="friendsCount" class="bg-gray-900/50 p-3 rounded-lg"></div>
+                <div id="followersCount" class="bg-gray-900/50 p-3 rounded-lg"></div>
+                <div id="followingCount" class="bg-gray-900/50 p-3 rounded-lg"></div>
+            </div>
+
+            <div class="space-y-6">
+                <div>
+                    <h3 class="font-bold text-lg mb-3 text-sky-300">Roblox Badges</h3>
+                    <div id="badgeList" class="flex flex-wrap gap-3"></div>
+                </div>
+                <div>
+                    <h3 class="font-bold text-lg mb-3 text-sky-300">Previous Usernames</h3>
+                    <div id="usernamesList" class="flex flex-wrap gap-2"></div>
+                </div>
+            </div>
+        </div>
+        <footer class="text-center mt-8 text-gray-600 text-sm">
+            <p>This tool uses publicly available Roblox APIs.</p>
+        </footer>
+    </div>
+
+    <script>
+        function extractUserId(input) {
+            input = input.trim();
+            if (/^\d+$/.test(input)) return input;
+            const match = input.match(/roblox\.com\/users\/(\d+)\/profile/);
+            return match ? match[1] : null;
+        }
+
+        function setLoading(isLoading) {
+            document.getElementById('spinner').style.display = isLoading ? 'block' : 'none';
+        }
+
+        function showError(msg) {
+            const errorEl = document.getElementById('errorMessage');
+            errorEl.innerHTML = msg;
+            errorEl.style.display = 'block';
+            document.getElementById('resultsCard').style.display = 'none';
+        }
+
+        function hideError() {
+            document.getElementById('errorMessage').style.display = 'none';
+        }
+        
+        function hideResults() {
+            document.getElementById('resultsCard').style.display = 'none';
+        }
+
+        function showResults() {
+            document.getElementById('resultsCard').style.display = 'block';
+        }
+
+        async function fetchProfile(userId) {
+            const endpoints = {
+                profile: `https://users.roblox.com/v1/users/${userId}`,
+                avatar: `https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${userId}&size=150x150&format=Png&isCircular=false`,
+                friends: `https://friends.roblox.com/v1/users/${userId}/friends/count`,
+                followers: `https://friends.roblox.com/v1/users/${userId}/followers/count`,
+                following: `https://friends.roblox.com/v1/users/${userId}/followings/count`,
+                badges: `https://accountinformation.roblox.com/v1/users/${userId}/roblox-badges`,
+                usernameHistory: `https://users.roblox.com/v1/users/${userId}/username-history?limit=50&sortOrder=Desc`
+            };
+
+            try {
+                setLoading(true);
+                hideError();
+                hideResults();
+
+                const profileRes = await fetch(endpoints.profile);
+                if (!profileRes.ok) {
+                    if (profileRes.status === 404) throw new Error("User not found. Check the ID or URL.");
+                    throw new Error("Failed to fetch profile info. The API might be down.");
+                }
+                const profile = await profileRes.json();
+
+                const [avatarRes, friendsRes, followersRes, followingRes, badgesRes, usernameRes] = await Promise.all([
+                    fetch(endpoints.avatar),
+                    fetch(endpoints.friends),
+                    fetch(endpoints.followers),
+                    fetch(endpoints.following),
+                    fetch(endpoints.badges),
+                    fetch(endpoints.usernameHistory)
+                ]);
+
+                const avatarData = avatarRes.ok ? await avatarRes.json() : { data: [] };
+                const avatarUrl = avatarData.data && avatarData.data[0] ? avatarData.data[0].imageUrl : '';
+
+                const friendsCount = friendsRes.ok ? (await friendsRes.json()).count : 'N/A';
+                const followersCount = followersRes.ok ? (await followersRes.json()).count : 'N/A';
+                const followingCount = followingRes.ok ? (await followingRes.json()).count : 'N/A';
+
+                const badgesData = badgesRes.ok ? await badgesRes.json() : [];
+                const usernameData = usernameRes.ok ? await usernameRes.json() : { data: [] };
+                const previousUsernames = usernameData.data ? usernameData.data.map(u => u.name) : [];
+
+                document.getElementById('avatarImg').src = avatarUrl || 'https://placehold.co/150x150/1f2937/38bdf8?text=?';
+                document.getElementById('avatarImg').onerror = function() { this.src = 'https://placehold.co/150x150/1f2937/38bdf8?text=?'; };
+                document.getElementById('displayName').textContent = profile.displayName || 'No Display Name';
+                document.getElementById('username').textContent = profile.name ? '@' + profile.name : '';
+                document.getElementById('description').textContent = profile.description || 'No bio available.';
+
+                document.getElementById('friendsCount').innerHTML = `<span class="block text-2xl font-bold text-white">${friendsCount.toLocaleString()}</span><span class="text-xs text-gray-400">Friends</span>`;
+                document.getElementById('followersCount').innerHTML = `<span class="block text-2xl font-bold text-white">${followersCount.toLocaleString()}</span><span class="text-xs text-gray-400">Followers</span>`;
+                document.getElementById('followingCount').innerHTML = `<span class="block text-2xl font-bold text-white">${followingCount.toLocaleString()}</span><span class="text-xs text-gray-400">Following</span>`;
+
+                const badgeList = document.getElementById('badgeList');
+                badgeList.innerHTML = '';
+                if (badgesData.length > 0) {
+                    badgesData.forEach(badge => {
+                        badgeList.innerHTML += `
+                            <div class="flex items-center gap-2 bg-gray-800/70 border border-gray-700 rounded-full px-3 py-1 text-sm">
+                                <img src="${badge.imageUrl}" alt="${badge.name}" class="w-5 h-5 rounded-full bg-gray-700">
+                                <span>${badge.name}</span>
+                            </div>`;
+                    });
+                } else {
+                    badgeList.innerHTML = '<span class="text-gray-500 text-sm">No badges to display.</span>';
+                }
+
+                const usernamesList = document.getElementById('usernamesList');
+                usernamesList.innerHTML = '';
+                if (previousUsernames.length > 0) {
+                    previousUsernames.forEach(name => {
+                        usernamesList.innerHTML += `<div class="bg-gray-800 border border-gray-700 rounded-md px-2 py-1 text-xs text-gray-300">${name}</div>`;
+                    });
+                } else {
+                    usernamesList.innerHTML = '<span class="text-gray-500 text-sm">No previous usernames found.</span>';
+                }
+
+                showResults();
+            } catch (err) {
+                let errorMessage = err.message || "An unknown error occurred.";
+                if (err instanceof TypeError && err.message.includes('Failed to fetch')) {
+                    errorMessage = "Network Error: Unable to connect to Roblox APIs. This may be due to browser restrictions (CORS) or a network issue.";
+                }
+                showError(errorMessage);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        document.getElementById('lookupForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const input = document.getElementById('userInput').value;
+            const userId = extractUserId(input);
+            if (!userId) {
+                showError("Invalid input. Please enter a valid Roblox User ID or profile URL.");
+                return;
+            }
+            fetchProfile(userId);
+        });
+
+        document.getElementById('userInput').addEventListener('input', function() {
+            hideError();
+            hideResults();
+        });
+    </script>
+</body>
+</html>
